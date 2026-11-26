@@ -1,6 +1,5 @@
 package edu.campus.library.service;
 
-import edu.campus.library.domain.member.Member;
 import edu.campus.library.domain.room.Room;
 import edu.campus.library.domain.room.RoomReservation;
 import edu.campus.library.infra.persistence.InMemoryRepository;
@@ -14,28 +13,26 @@ import java.util.List;
 import java.util.Optional;
 
 import static edu.campus.library.TestFixtures.DAY;
-import static edu.campus.library.TestFixtures.student;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Command + undo: the state after undo is exactly the state before the command. */
 class CommandUndoTest {
-    private RoomBookingService booking;
+    private RoomBooking booking;
     private CommandHistory history;
 
     @BeforeEach
     void setUp() {
         InMemoryRepository<Room> rooms = new InMemoryRepository<>();
         rooms.save(new Room("RM-1", "Study", 4, false));
-        InMemoryRepository<Member> members = new InMemoryRepository<>();
-        members.save(student("M-1"));
-        booking = new RoomBookingService(rooms, new InMemoryRepository<>(), members);
+        booking = new RoomBookingService(rooms, new InMemoryRepository<>());
         history = new CommandHistory();
     }
 
     private RoomReservation r(String id, int from) {
-        return new RoomReservation(id, "RM-1", "M-1", DAY, from, from + 1, "p" + id);
+        return RoomReservation.builder().id(id).room("RM-1").bookedBy("M-1").on(DAY)
+                .from(from).to(from + 1).purpose("p" + id).build();
     }
 
     /** Full snapshot of every field, so "exactly the same" is really checked. */

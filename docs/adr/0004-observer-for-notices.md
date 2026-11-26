@@ -15,5 +15,5 @@ B. Two listeners: `OverdueNoticeListener` and `ActivityLog`. The notice listener
 C rejected: hides the pattern and would need its own ADR (brief §12).
 
 ## Consequences
-- **Extension point**: a new channel (for example SMS) is a new class plus one line in `App`; no existing class changes.
+- **Extension point**: `SmsChannel` was added as a new class plus one line in `App`; no existing class changed.
 - Listeners run synchronously in publish order; a failing channel would stop the others (acceptable for console demo; revisit if a real gateway is added).

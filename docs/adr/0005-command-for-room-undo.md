@@ -15,4 +15,5 @@ B. Reserve ↔ cancel are exact inverses, so a command needs to remember only on
 ## Consequences
 - `CommandUndoTest` compares a full `toString` snapshot before and after undo.
 - A command that throws is not recorded.
+- Commands call the proxy, so undo respects access rules (Command + Proxy).
 - Loans are not undoable on purpose: a returned book with a fine is a financial record.

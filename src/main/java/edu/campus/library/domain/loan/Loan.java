@@ -1,6 +1,7 @@
 package edu.campus.library.domain.loan;
 
 import edu.campus.library.domain.Identifiable;
+import edu.campus.library.domain.fine.FineStrategy;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -8,7 +9,7 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 
-/** A loan of one book to one member. Status rules are checked in each method. */
+/** Context of the State pattern: delegates every status-dependent action to its state. */
 public class Loan implements Identifiable, Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -20,7 +21,7 @@ public class Loan implements Identifiable, Serializable {
     private LocalDate dueDate;
     private LocalDate returnedOn;
     private BigDecimal fine = BigDecimal.ZERO.setScale(2);
-    private LoanStatus status = LoanStatus.RESERVED;
+    private LoanState state = new ReservedState();
 
     public Loan(String id, String bookId, String memberId, LocalDate createdOn) {
         this.id = Objects.requireNonNull(id);
@@ -29,40 +30,41 @@ public class Loan implements Identifiable, Serializable {
         this.createdOn = Objects.requireNonNull(createdOn);
     }
 
+    // ----- actions, delegated to the current state -----
+
     public void pickUp(LocalDate today, int loanDays) {
-        if (status != LoanStatus.RESERVED) {
-            throw new IllegalStateException("Cannot pick up a loan that is " + status);
-        }
-        borrowedOn = today;
-        dueDate = today.plusDays(loanDays);
-        status = LoanStatus.BORROWED;
+        state.pickUp(this, today, loanDays);
     }
 
-    public void returnItem(LocalDate today, BigDecimal charged) {
-        if (status != LoanStatus.BORROWED && status != LoanStatus.OVERDUE) {
-            throw new IllegalStateException("Cannot return a loan that is " + status);
-        }
-        returnedOn = today;
-        fine = charged;
-        status = LoanStatus.RETURNED;
+    public void returnItem(LocalDate today, FineStrategy fines) {
+        state.returnItem(this, today, fines);
     }
 
     public void markOverdue(LocalDate today) {
-        if (status != LoanStatus.BORROWED) {
-            throw new IllegalStateException("Cannot mark overdue a loan that is " + status);
-        }
-        if (daysLate(today) <= 0) {
-            throw new IllegalStateException("Loan " + id + " is not past its due date");
-        }
-        status = LoanStatus.OVERDUE;
+        state.markOverdue(this, today);
     }
 
     public void cancel() {
-        if (status != LoanStatus.RESERVED) {
-            throw new IllegalStateException("Cannot cancel a loan that is " + status);
-        }
-        status = LoanStatus.CANCELLED;
+        state.cancel(this);
     }
+
+    // ----- used only by state classes (package-private) -----
+
+    void changeState(LoanState next) {
+        this.state = Objects.requireNonNull(next);
+    }
+
+    void start(LocalDate borrowed, LocalDate due) {
+        this.borrowedOn = borrowed;
+        this.dueDate = due;
+    }
+
+    void complete(LocalDate returned, BigDecimal charged) {
+        this.returnedOn = returned;
+        this.fine = charged;
+    }
+
+    // ----- queries -----
 
     public long daysLate(LocalDate today) {
         if (dueDate == null) {
@@ -72,15 +74,11 @@ public class Loan implements Identifiable, Serializable {
     }
 
     public boolean holdsBook() {
-        return status == LoanStatus.RESERVED || status == LoanStatus.BORROWED || status == LoanStatus.OVERDUE;
-    }
-
-    public LoanStatus status() {
-        return status;
+        return state.holdsBook();
     }
 
     public String stateName() {
-        return status.name();
+        return state.name();
     }
 
     @Override
@@ -118,7 +116,7 @@ public class Loan implements Identifiable, Serializable {
 
     @Override
     public String toString() {
-        return id + " book=" + bookId + " member=" + memberId + " " + status
+        return id + " book=" + bookId + " member=" + memberId + " " + state.name()
                 + (dueDate != null ? " due=" + dueDate : "")
                 + (fine.signum() > 0 ? " fine=" + fine : "");
     }

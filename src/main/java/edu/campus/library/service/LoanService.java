@@ -5,12 +5,9 @@ import edu.campus.library.domain.catalog.Book;
 import edu.campus.library.domain.event.LoanEvent;
 import edu.campus.library.domain.event.LoanEventType;
 import edu.campus.library.domain.loan.Loan;
-import edu.campus.library.domain.loan.LoanStatus;
 import edu.campus.library.domain.member.Member;
-import edu.campus.library.domain.member.MemberType;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -22,26 +19,31 @@ public class LoanService {
     private final Repository<Loan> loans;
     private final MemberService members;
     private final CatalogService catalog;
+    private final FinePolicy finePolicy;
     private final LoanEvents events;
     private final SimulatedDate date;
     private final IdGenerator ids;
 
     public LoanService(Repository<Loan> loans, MemberService members, CatalogService catalog,
-                       LoanEvents events, SimulatedDate date, IdGenerator ids) {
+                       FinePolicy finePolicy, LoanEvents events,
+                       SimulatedDate date, IdGenerator ids) {
         this.loans = loans;
         this.members = members;
         this.catalog = catalog;
+        this.finePolicy = finePolicy;
         this.events = events;
         this.date = date;
         this.ids = ids;
     }
 
+    /** Places a hold on a book; the reader collects it later with {@link #pickUp}. */
     public Loan reserve(String memberId, String bookId) {
         Loan loan = openLoan(memberId, bookId);
         publish(LoanEventType.RESERVED, loan);
         return loan;
     }
 
+    /** Reserve and collect in one step (reader is at the desk). */
     public Loan borrow(String memberId, String bookId) {
         Loan loan = openLoan(memberId, bookId);
         return pickUp(loan.id());
@@ -65,36 +67,23 @@ public class LoanService {
     public Loan returnBook(String loanId) {
         Loan loan = get(loanId);
         Member member = members.get(loan.memberId());
-        BigDecimal fine = fineFor(member.type(), loan.daysLate(date.today()));
-        loan.returnItem(date.today(), fine);
+        loan.returnItem(date.today(), finePolicy.strategyFor(member.type()));
         loans.save(loan);
         publish(LoanEventType.RETURNED, loan);
-        if (fine.signum() > 0) {
-            member.addFine(fine);
+        if (loan.fine().signum() > 0) {
+            member.addFine(loan.fine());
             members.save(member);
             events.publish(new LoanEvent(LoanEventType.FINE_CHARGED, loan.id(), loan.memberId(),
-                    loan.bookId(), date.today(), fine));
+                    loan.bookId(), date.today(), loan.fine()));
         }
         return loan;
     }
 
-    /** Fine rules per reader type. */
-    BigDecimal fineFor(MemberType type, long daysLate) {
-        BigDecimal amount;
-        if (type == MemberType.STUDENT) {
-            amount = new BigDecimal("0.50").multiply(BigDecimal.valueOf(Math.max(0, daysLate)))
-                    .min(new BigDecimal("20.00"));
-        } else {
-            amount = new BigDecimal("0.25").multiply(BigDecimal.valueOf(Math.max(0, daysLate - 2)))
-                    .min(new BigDecimal("10.00"));
-        }
-        return amount.setScale(2, RoundingMode.HALF_UP);
-    }
-
+    /** Moves every borrowed loan past its due date to OVERDUE and notifies. */
     public List<Loan> scanOverdue() {
         List<Loan> flagged = new ArrayList<>();
         for (Loan loan : loans.findAll()) {
-            if (loan.status() == LoanStatus.BORROWED && loan.daysLate(date.today()) > 0) {
+            if ("BORROWED".equals(loan.stateName()) && loan.daysLate(date.today()) > 0) {
                 loan.markOverdue(date.today());
                 loans.save(loan);
                 publish(LoanEventType.OVERDUE, loan);
@@ -120,6 +109,12 @@ public class LoanService {
 
     public Loan get(String loanId) {
         return loans.findById(loanId).orElseThrow(() -> new NoSuchElementException("No loan " + loanId));
+    }
+
+    public BigDecimal previewFine(String loanId) {
+        Loan loan = get(loanId);
+        Member member = members.get(loan.memberId());
+        return finePolicy.strategyFor(member.type()).fineFor(loan.daysLate(date.today()));
     }
 
     private Loan openLoan(String memberId, String bookId) {

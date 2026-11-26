@@ -6,7 +6,11 @@ import java.io.Serializable;
 import java.time.LocalDate;
 import java.util.Objects;
 
-/** Immutable room reservation; all rules are checked in the constructor. */
+/**
+ * Immutable room reservation. Built only through {@link Builder} (L9),
+ * because it has many fields and several cross-field rules
+ * (opening hours, maximum length, end after start).
+ */
 public final class RoomReservation implements Identifiable, Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -22,24 +26,18 @@ public final class RoomReservation implements Identifiable, Serializable {
     private final int endHour;
     private final String purpose;
 
-    public RoomReservation(String id, String roomId, String memberId, LocalDate date,
-                           int startHour, int endHour, String purpose) {
-        this.id = Objects.requireNonNull(id, "id is required");
-        this.roomId = Objects.requireNonNull(roomId, "room is required");
-        this.memberId = Objects.requireNonNull(memberId, "member is required");
-        this.date = Objects.requireNonNull(date, "date is required");
-        if (startHour < OPENS_AT || endHour > CLOSES_AT) {
-            throw new IllegalArgumentException("Rooms are open " + OPENS_AT + ":00-" + CLOSES_AT + ":00");
-        }
-        if (endHour <= startHour) {
-            throw new IllegalArgumentException("End must be after start");
-        }
-        if (endHour - startHour > MAX_HOURS) {
-            throw new IllegalArgumentException("Maximum booking is " + MAX_HOURS + " hours");
-        }
-        this.startHour = startHour;
-        this.endHour = endHour;
-        this.purpose = purpose == null ? "study" : purpose;
+    private RoomReservation(Builder b) {
+        this.id = b.id;
+        this.roomId = b.roomId;
+        this.memberId = b.memberId;
+        this.date = b.date;
+        this.startHour = b.startHour;
+        this.endHour = b.endHour;
+        this.purpose = b.purpose;
+    }
+
+    public static Builder builder() {
+        return new Builder();
     }
 
     public boolean overlaps(RoomReservation other) {
@@ -92,5 +90,72 @@ public final class RoomReservation implements Identifiable, Serializable {
     public String toString() {
         return String.format("%s room=%s member=%s %s %02d:00-%02d:00 (%s)",
                 id, roomId, memberId, date, startHour, endHour, purpose);
+    }
+
+    /** Builder pattern: step-by-step construction with validation in build(). */
+    public static final class Builder {
+        private String id;
+        private String roomId;
+        private String memberId;
+        private LocalDate date;
+        private int startHour = -1;
+        private int endHour = -1;
+        private String purpose = "study";
+
+        private Builder() {
+        }
+
+        public Builder id(String id) {
+            this.id = id;
+            return this;
+        }
+
+        public Builder room(String roomId) {
+            this.roomId = roomId;
+            return this;
+        }
+
+        public Builder bookedBy(String memberId) {
+            this.memberId = memberId;
+            return this;
+        }
+
+        public Builder on(LocalDate date) {
+            this.date = date;
+            return this;
+        }
+
+        public Builder from(int hour) {
+            this.startHour = hour;
+            return this;
+        }
+
+        public Builder to(int hour) {
+            this.endHour = hour;
+            return this;
+        }
+
+        public Builder purpose(String purpose) {
+            this.purpose = purpose;
+            return this;
+        }
+
+        public RoomReservation build() {
+            Objects.requireNonNull(id, "id is required");
+            Objects.requireNonNull(roomId, "room is required");
+            Objects.requireNonNull(memberId, "member is required");
+            Objects.requireNonNull(date, "date is required");
+            if (startHour < OPENS_AT || endHour > CLOSES_AT) {
+                throw new IllegalArgumentException(
+                        "Rooms are open " + OPENS_AT + ":00-" + CLOSES_AT + ":00");
+            }
+            if (endHour <= startHour) {
+                throw new IllegalArgumentException("End must be after start");
+            }
+            if (endHour - startHour > MAX_HOURS) {
+                throw new IllegalArgumentException("Maximum booking is " + MAX_HOURS + " hours");
+            }
+            return new RoomReservation(this);
+        }
     }
 }

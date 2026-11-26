@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.util.Map;
 import java.util.NoSuchElementException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -60,6 +61,11 @@ class CatalogAndMemberServiceTest {
         assertEquals(new BigDecimal("4.00"), w.members.payFine(m.id(), new BigDecimal("4")));
         assertEquals(3, w.members.all().size());
         assertThrows(NoSuchElementException.class, () -> w.members.get("M-404"));
+    }
+
+    @Test
+    void finePolicyNeedsAStrategyForEveryType() {
+        assertThrows(IllegalArgumentException.class, () -> new FinePolicy(Map.of()));
     }
 
     @Test

@@ -1,7 +1,7 @@
 # Pattern Register
 
 Every pattern below exists in the code, solves a problem we actually had, and has a test.
-Counts: **Creational 2 · Structural 4 · Behavioral 7 = 13**.
+Counts: **Creational 2 · Structural 4 · Behavioral 7 = 13**. Rejected: **2**.
 
 ## Used patterns
 
@@ -30,6 +30,13 @@ Architectural pattern (L14, not counted above): **Repository** — `Repository<T
 | **State + Strategy** | `BorrowedState.returnItem` / `OverdueState.returnItem` call `FineStrategy.fineFor` | The state decides *whether* a fine applies; the strategy decides *how much*. Neither knows the other's rules. |
 | **Composite + Visitor** | `Section.accept` / `Book.accept` with `CatalogVisitor` | Visitor walks the composite; new reports need no change to the tree. |
 | **Command + Proxy** | `ReserveRoomCommand` calls `RoomBooking`, which is the proxy | Undoing a cancellation re-reserves through the proxy, so access rules apply to undo too. |
+
+## Rejected patterns
+
+| Pattern | Category | Where it was tempting | Why rejected | ADR |
+|---------|----------|-----------------------|--------------|-----|
+| Singleton | Creational | One `LoanEvents`, one `SimulatedDate`, one repository set | Hidden global state, tests interfere with each other. App creates exactly one instance and injects it. | [ADR-0008](adr/0008-reject-singleton.md) |
+| Mediator | Behavioral | Coordinating loan, member and notification services | Only one direction of communication (loan → listeners); Observer is enough. A mediator would be a god class. | [ADR-0009](adr/0009-reject-mediator.md) |
 
 ## Removed or simplified in the pattern audit (week 7)
 

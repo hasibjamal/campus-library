@@ -93,7 +93,7 @@ flowchart TB
 
 ## Patterns
 
-13 patterns (2 creational, 4 structural, 7 behavioral). Details, classes and tests: [docs/PATTERN_REGISTER.md](docs/PATTERN_REGISTER.md). Decisions: [docs/adr](docs/adr).
+13 patterns (2 creational, 4 structural, 7 behavioral) and 2 rejected. Details, classes and tests: [docs/PATTERN_REGISTER.md](docs/PATTERN_REGISTER.md). Decisions: [docs/adr](docs/adr).
 
 ## Extension points (Open/Closed)
 

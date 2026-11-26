@@ -1,13 +1,13 @@
 package edu.campus.library.service.command;
 
 import edu.campus.library.domain.room.RoomReservation;
-import edu.campus.library.service.RoomBookingService;
+import edu.campus.library.service.RoomBooking;
 
 public class ReserveRoomCommand implements Command {
-    private final RoomBookingService booking;
+    private final RoomBooking booking;
     private final RoomReservation reservation;
 
-    public ReserveRoomCommand(RoomBookingService booking, RoomReservation reservation) {
+    public ReserveRoomCommand(RoomBooking booking, RoomReservation reservation) {
         this.booking = booking;
         this.reservation = reservation;
     }

@@ -4,11 +4,14 @@ import edu.campus.library.domain.Repository;
 import edu.campus.library.domain.catalog.Book;
 import edu.campus.library.domain.catalog.CatalogRepository;
 import edu.campus.library.domain.catalog.Section;
+import edu.campus.library.domain.fine.DailyCappedFine;
 import edu.campus.library.domain.loan.Loan;
 import edu.campus.library.domain.member.Member;
+import edu.campus.library.domain.member.MemberType;
 import edu.campus.library.infra.persistence.RepositoryFactory;
 
 import java.util.List;
+import java.util.Map;
 
 import static edu.campus.library.TestFixtures.DAY;
 import static edu.campus.library.TestFixtures.staff;
@@ -43,8 +46,11 @@ class LibraryWorld {
         }
         events.subscribe(new OverdueNoticeListener(memberRepo, List.of(channel)));
         events.subscribe(activity);
+        FinePolicy fines = new FinePolicy(Map.of(
+                MemberType.STUDENT, DailyCappedFine.student(),
+                MemberType.STAFF, DailyCappedFine.staff()));
         members = new MemberService(memberRepo, ids);
         catalog = new CatalogService(catalogRepo, ids);
-        loans = new LoanService(loanRepo, members, catalog, events, date, ids);
+        loans = new LoanService(loanRepo, members, catalog, fines, events, date, ids);
     }
 }

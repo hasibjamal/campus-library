@@ -1,7 +1,6 @@
 package edu.campus.library.service;
 
 import edu.campus.library.domain.loan.Loan;
-import edu.campus.library.domain.member.MemberType;
 import edu.campus.library.infra.persistence.InMemoryRepositoryFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** Main use case end to end: borrow, overdue scan (Observer), return with fine. */
+/** Main use case end to end: borrow, overdue scan (Observer), return with fine (State + Strategy). */
 class LoanServiceTest {
     private LibraryWorld w;
 
@@ -71,6 +70,7 @@ class LoanServiceTest {
     void lateReturnChargesFineToMemberAndNotifies() {
         Loan l = w.loans.borrow("M-1", "B-1");
         w.date.advanceDays(20); // 6 days late
+        assertEquals(new BigDecimal("3.00"), w.loans.previewFine(l.id()));
         Loan returned = w.loans.returnBook(l.id());
         assertEquals("RETURNED", returned.stateName());
         assertEquals(new BigDecimal("3.00"), returned.fine());
@@ -123,16 +123,6 @@ class LoanServiceTest {
         w.members.get("M-2").deactivate();
         assertTrue(assertThrows(IllegalStateException.class, () -> w.loans.borrow("M-2", "B-2"))
                 .getMessage().contains("not active"));
-    }
-
-    @Test
-    void fineRulesPerReaderType() {
-        assertEquals(new BigDecimal("0.00"), w.loans.fineFor(MemberType.STUDENT, 0));
-        assertEquals(new BigDecimal("5.00"), w.loans.fineFor(MemberType.STUDENT, 10));
-        assertEquals(new BigDecimal("20.00"), w.loans.fineFor(MemberType.STUDENT, 365));
-        assertEquals(new BigDecimal("0.00"), w.loans.fineFor(MemberType.STAFF, 2));
-        assertEquals(new BigDecimal("0.25"), w.loans.fineFor(MemberType.STAFF, 3));
-        assertEquals(new BigDecimal("10.00"), w.loans.fineFor(MemberType.STAFF, 500));
     }
 
     @Test

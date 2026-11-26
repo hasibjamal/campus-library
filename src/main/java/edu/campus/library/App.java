@@ -2,37 +2,41 @@ package edu.campus.library;
 
 import edu.campus.library.domain.Repository;
 import edu.campus.library.domain.catalog.CatalogRepository;
+import edu.campus.library.domain.fine.DailyCappedFine;
 import edu.campus.library.domain.loan.Loan;
 import edu.campus.library.domain.member.Member;
+import edu.campus.library.domain.member.MemberType;
 import edu.campus.library.domain.room.Room;
 import edu.campus.library.domain.room.RoomReservation;
 import edu.campus.library.infra.notification.EmailChannel;
+import edu.campus.library.infra.notification.SmsChannel;
 import edu.campus.library.infra.notification.vendor.QuickMailClient;
 import edu.campus.library.infra.persistence.DemoData;
 import edu.campus.library.infra.persistence.InMemoryRepositoryFactory;
 import edu.campus.library.infra.persistence.RepositoryFactory;
+import edu.campus.library.service.AccessControlledRoomBooking;
 import edu.campus.library.service.ActivityLog;
 import edu.campus.library.service.CatalogService;
+import edu.campus.library.service.FinePolicy;
 import edu.campus.library.service.IdGenerator;
+import edu.campus.library.service.LibraryFacade;
 import edu.campus.library.service.LoanEvents;
 import edu.campus.library.service.LoanService;
 import edu.campus.library.service.MemberService;
 import edu.campus.library.service.NotificationChannel;
 import edu.campus.library.service.OverdueNoticeListener;
+import edu.campus.library.service.RoomBooking;
 import edu.campus.library.service.RoomBookingService;
 import edu.campus.library.service.SimulatedDate;
 import edu.campus.library.service.command.CommandHistory;
-import edu.campus.library.service.importing.CatalogImporter;
 import edu.campus.library.service.importing.CsvBookImporter;
 import edu.campus.library.service.importing.TsvBookImporter;
 import edu.campus.library.ui.ConsoleMenu;
 
-import java.io.InputStream;
 import java.io.PrintStream;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -46,12 +50,15 @@ public final class App {
     }
 
     public static void main(String[] args) {
+        RepositoryFactory factory = new InMemoryRepositoryFactory();
         System.out.println("Store: in memory");
-        build(new InMemoryRepositoryFactory(), LocalDate.now(), System.in, System.out).run();
+        LibraryFacade library = build(factory, LocalDate.now(), System.out);
+        new ConsoleMenu(library, System.in, System.out).run();
     }
 
     /** Builds the whole object graph. Public so a smoke test can wire the real system. */
-    public static ConsoleMenu build(RepositoryFactory factory, LocalDate startDate, InputStream in, PrintStream out) {
+    public static LibraryFacade build(RepositoryFactory factory, LocalDate startDate, PrintStream out) {
+        // persistence (Abstract Factory chooses the family)
         Repository<Member> members = factory.members();
         Repository<Loan> loans = factory.loans();
         Repository<Room> rooms = factory.rooms();
@@ -64,24 +71,34 @@ public final class App {
 
         // Observer: subject + subscribers
         LoanEvents events = new LoanEvents();
-        List<NotificationChannel> channels = List.of(new EmailChannel(new QuickMailClient(out)));
+        List<NotificationChannel> channels = List.of(
+                new EmailChannel(new QuickMailClient(out)),   // Adapter over the vendor SDK
+                new SmsChannel(out));
         events.subscribe(new OverdueNoticeListener(members, channels));
         ActivityLog activity = new ActivityLog();
         events.subscribe(activity);
 
+        // Strategy: one fine rule per reader type
+        FinePolicy fines = new FinePolicy(Map.of(
+                MemberType.STUDENT, DailyCappedFine.student(),
+                MemberType.STAFF, DailyCappedFine.staff()));
+
         MemberService memberService = new MemberService(members, ids);
         CatalogService catalogService = new CatalogService(catalog, ids);
-        LoanService loanService = new LoanService(loans, memberService, catalogService, events, date, ids);
-        RoomBookingService roomService = new RoomBookingService(rooms, reservations, members);
+        LoanService loanService = new LoanService(loans, memberService, catalogService,
+                fines, events, date, ids);
 
-        Map<String, CatalogImporter> importers = Stream.of(new CsvBookImporter(), new TsvBookImporter())
-                .collect(Collectors.toMap(CatalogImporter::format, i -> i));
+        // Proxy wraps the real room service
+        RoomBooking roomBooking = new AccessControlledRoomBooking(
+                new RoomBookingService(rooms, reservations), rooms, members);
 
-        return new ConsoleMenu(catalogService, loanService, memberService, roomService,
-                new CommandHistory(), activity, date, ids, importers, in, out);
+        // Facade for the UI
+        return new LibraryFacade(catalogService, loanService, memberService, roomBooking,
+                new CommandHistory(), activity, date, ids,
+                List.of(new CsvBookImporter(), new TsvBookImporter()));   // Template Method variants
     }
 
-    /** Ids continue after the highest number already stored. */
+    /** Ids continue after the highest number already stored, so file data never clashes. */
     static long nextFreeId(Repository<Member> m, Repository<Loan> l,
                            Repository<RoomReservation> r, CatalogRepository c) {
         Stream<String> all = Stream.of(

@@ -23,11 +23,11 @@ public class LoanService {
     private final MemberService members;
     private final CatalogService catalog;
     private final LoanEvents events;
-    private final DateProvider date;
+    private final SimulatedDate date;
     private final IdGenerator ids;
 
     public LoanService(Repository<Loan> loans, MemberService members, CatalogService catalog,
-                       LoanEvents events, DateProvider date, IdGenerator ids) {
+                       LoanEvents events, SimulatedDate date, IdGenerator ids) {
         this.loans = loans;
         this.members = members;
         this.catalog = catalog;

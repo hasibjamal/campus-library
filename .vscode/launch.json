@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "App (in-memory store)",
+      "request": "launch",
+      "mainClass": "edu.campus.library.App",
+      "console": "integratedTerminal",
+      "args": "--store=memory"
+    },
+    {
+      "type": "java",
+      "name": "App (file store)",
+      "request": "launch",
+      "mainClass": "edu.campus.library.App",
+      "console": "integratedTerminal",
+      "args": "--store=file"
+    }
+  ]
+}

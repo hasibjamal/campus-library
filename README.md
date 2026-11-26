@@ -18,19 +18,20 @@ Requirements: Java 17+, Maven 3.9+.
 
 ```bash
 mvn verify                                        # tests + ArchUnit rules + 60% coverage gate
-mvn -q compile exec:java                          # run (in-memory store)
+mvn -q compile exec:java                          # run with the in-memory store
+mvn -q compile exec:java -Dexec.args=--store=file # run with the file store (./data)
 ```
 
-Or `mvn package` and then `java -jar target/campus-library.jar`.
-In VS Code press **F5** and pick *App (in-memory store)*.
+Or `mvn package` and then `java -jar target/campus-library.jar [--store=file]`.
+In VS Code press **F5** and pick *App (in-memory store)* or *App (file store)*.
 
 ### Demo script (main use case + extension point)
 
 | Step | Menu input | What it shows |
 |------|-----------|---------------|
-| 1 | `1` | Catalogue tree (Composite) |
-| 2 | `6`, `M-1`, `B-1` | Borrow passes the loan checks |
-| 3 | `6`, `M-2`, `B-1` | Refused: book already on loan |
+| 1 | `1` | Catalogue tree (Composite + Visitor) |
+| 2 | `6`, `M-1`, `B-1` | Borrow passes the eligibility chain |
+| 3 | `6`, `M-2`, `B-1` | Refused: book already on loan (Chain) |
 | 4 | `18`, `20` then `11` | Advance 20 days, overdue scan → e-mail **and** SMS notice (Observer, extension point) |
 | 5 | `9`, `L-1000` | Return → fine 3.00 (State + Strategy) |
 | 6 | `14`, `M-1`, `RM-3`, … | Student refused staff-only room (Proxy) |
@@ -52,12 +53,13 @@ flowchart TB
         Console[ConsoleMenu]
     end
     subgraph Infra["infra"]
-        RF["RepositoryFactory<br/>InMemory"]
+        RF["RepositoryFactory<br/>InMemory / File"]
         Ch["EmailChannel (adapter), SmsChannel"]
     end
     subgraph Service["service"]
         Facade[LibraryFacade]
         LoanS[LoanService]
+        Chain[EligibilityCheck chain]
         Events[LoanEvents]
         Proxy[AccessControlledRoomBooking]
         RoomS[RoomBookingService]
@@ -66,7 +68,7 @@ flowchart TB
     subgraph Domain["domain"]
         Loan["Loan + LoanState"]
         Fine[FineStrategy]
-        Cat["Section / Book"]
+        Cat["Section / Book + CatalogVisitor"]
         Res["RoomReservation.Builder"]
         Repo["Repository&lt;T&gt;"]
     end
@@ -74,7 +76,7 @@ flowchart TB
     Console --> Facade
     Facade --> LoanS & Proxy & Cmd
     Proxy --> RoomS
-    LoanS --> Events & Loan & Fine & Repo
+    LoanS --> Chain & Events & Loan & Fine & Repo
     RF -. implements .-> Repo
     Ch -. implements .-> Service
     Cat --- Repo
@@ -91,7 +93,7 @@ flowchart TB
 
 ## Patterns
 
-11 patterns (2 creational, 4 structural, 5 behavioral). Details, classes and tests: [docs/PATTERN_REGISTER.md](docs/PATTERN_REGISTER.md). Decisions: [docs/adr](docs/adr).
+13 patterns (2 creational, 4 structural, 7 behavioral). Details, classes and tests: [docs/PATTERN_REGISTER.md](docs/PATTERN_REGISTER.md). Decisions: [docs/adr](docs/adr).
 
 ## Extension points (Open/Closed)
 
@@ -99,16 +101,19 @@ flowchart TB
 |---------|-------------------------------|---------------------|
 | A notification channel (Telegram, push) | `service.NotificationChannel` | `App.build` (channel list) |
 | A fine rule (amnesty, per-book-type) | `domain.fine.FineStrategy` | `App.build` (`FinePolicy` map) |
+| A catalogue report (CSV export, statistics) | `domain.catalog.CatalogVisitor<R>` | call `catalog.report(new …)` |
+| A loan eligibility rule | extend `service.eligibility.EligibilityCheck` | `App.build` (chain) |
 | An undoable room action | `service.command.Command` | `LibraryFacade` |
 | An import format (JSON, MARC) | extend `service.importing.CatalogImporter` | `App.build` (importer list) |
 | A mail provider | adapter implementing `service.NotificationChannel` | `App.build` |
 | A storage technology (SQLite) | `infra.persistence.RepositoryFactory` | `App.main` |
 
-`SmsChannel` was added this way, as a new class only.
+`SmsChannel` and `AuthorIndexReport` were added this way, as new classes only.
 
 ## Persistence
 
-`Repository<T>` (domain) with an in-memory implementation, created through `RepositoryFactory`. A second, file-based implementation is planned for M4 and will be switched in `App` only.
+`Repository<T>` (domain) has two implementations: `InMemoryRepository` and `FileRepository` (Java serialization, one file per aggregate in `./data`, atomic writes).
+The family is chosen once in `App.main` via `RepositoryFactory`; services never change. `LoanServiceTest.sameServicesWorkUnchangedOnFileRepositories` proves it.
 
 ## Libraries
 

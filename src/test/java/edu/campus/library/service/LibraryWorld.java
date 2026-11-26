@@ -9,7 +9,13 @@ import edu.campus.library.domain.loan.Loan;
 import edu.campus.library.domain.member.Member;
 import edu.campus.library.domain.member.MemberType;
 import edu.campus.library.infra.persistence.RepositoryFactory;
+import edu.campus.library.service.eligibility.ActiveMemberCheck;
+import edu.campus.library.service.eligibility.BookAvailableCheck;
+import edu.campus.library.service.eligibility.EligibilityCheck;
+import edu.campus.library.service.eligibility.LoanLimitCheck;
+import edu.campus.library.service.eligibility.UnpaidFinesCheck;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -46,11 +52,15 @@ class LibraryWorld {
         }
         events.subscribe(new OverdueNoticeListener(memberRepo, List.of(channel)));
         events.subscribe(activity);
+        EligibilityCheck chain = new ActiveMemberCheck();
+        chain.then(new UnpaidFinesCheck(new BigDecimal("5.00")))
+             .then(new LoanLimitCheck())
+             .then(new BookAvailableCheck());
         FinePolicy fines = new FinePolicy(Map.of(
                 MemberType.STUDENT, DailyCappedFine.student(),
                 MemberType.STAFF, DailyCappedFine.staff()));
         members = new MemberService(memberRepo, ids);
         catalog = new CatalogService(catalogRepo, ids);
-        loans = new LoanService(loanRepo, members, catalog, fines, events, date, ids);
+        loans = new LoanService(loanRepo, members, catalog, chain, fines, events, date, ids);
     }
 }

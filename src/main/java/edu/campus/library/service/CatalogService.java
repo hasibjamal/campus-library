@@ -2,7 +2,7 @@ package edu.campus.library.service;
 
 import edu.campus.library.domain.catalog.Book;
 import edu.campus.library.domain.catalog.CatalogRepository;
-import edu.campus.library.domain.catalog.CatalogComponent;
+import edu.campus.library.domain.catalog.CatalogVisitor;
 import edu.campus.library.domain.catalog.Section;
 
 import java.util.List;
@@ -63,21 +63,7 @@ public class CatalogService {
         return book;
     }
 
-    /** Indented tree of sections and books with book counts. */
-    public String treeText() {
-        StringBuilder sb = new StringBuilder();
-        appendTree(root(), 0, sb);
-        return sb.toString();
-    }
-
-    private void appendTree(CatalogComponent node, int depth, StringBuilder sb) {
-        String indent = "  ".repeat(depth);
-        if (node instanceof Section section) {
-            sb.append(indent).append("[").append(section.name()).append("] (")
-              .append(section.books().count()).append(" books)\n");
-            section.children().forEach(c -> appendTree(c, depth + 1, sb));
-        } else {
-            sb.append(indent).append("- ").append(node).append("\n");
-        }
+    public <R> R report(CatalogVisitor<R> visitor) {
+        return root().accept(visitor);
     }
 }

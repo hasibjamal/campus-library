@@ -54,7 +54,7 @@ public class ConsoleMenu {
     private void printMenu() {
         out.println();
         out.println("Today: " + library.today());
-        out.println(" Catalogue:  1 tree   2 search   4 add book");
+        out.println(" Catalogue:  1 tree   2 search   3 author index   4 add book");
         out.println(" Loans:      5 members  6 borrow  7 reserve book  8 pick up  9 return");
         out.println("            10 list loans  11 overdue scan  12 pay fine");
         out.println(" Rooms:     13 rooms  14 reserve room  15 cancel  16 day schedule  17 undo");
@@ -65,6 +65,7 @@ public class ConsoleMenu {
         switch (choice) {
             case "1" -> out.print(library.catalogueTree());
             case "2" -> printBooks(library.search(ask("Title or author contains")));
+            case "3" -> library.authorIndex().forEach((a, titles) -> out.println(a + ": " + titles));
             case "4" -> out.println("Added " + library.addBook(ask("Section path (e.g. Science/Computing)"),
                     ask("Title"), ask("Author"), Integer.parseInt(ask("Year"))));
             case "5" -> library.members().forEach(out::println);

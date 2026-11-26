@@ -2,14 +2,17 @@ package edu.campus.library;
 
 import edu.campus.library.domain.loan.Loan;
 import edu.campus.library.domain.room.RoomReservation;
+import edu.campus.library.infra.persistence.FileRepositoryFactory;
 import edu.campus.library.infra.persistence.InMemoryRepositoryFactory;
 import edu.campus.library.service.LibraryFacade;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 
 import static edu.campus.library.TestFixtures.DAY;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -18,6 +21,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Wires the real system through the composition root and runs the main use case via the Facade. */
 class AppSmokeTest {
+    @TempDir
+    Path dir;
+
     private final ByteArrayOutputStream buf = new ByteArrayOutputStream();
     private final PrintStream out = new PrintStream(buf, true, StandardCharsets.UTF_8);
 
@@ -55,8 +61,23 @@ class AppSmokeTest {
     }
 
     @Test
+    void fileStoreKeepsDataAndIdsContinue() {
+        LibraryFacade first = App.build(new FileRepositoryFactory(dir), DAY, out);
+        Loan loan = first.borrow("M-2", "B-2");
+        first.addBook("Humanities/History", "SPQR", "Mary Beard", 2015);
+
+        LibraryFacade second = App.build(new FileRepositoryFactory(dir), DAY, out);
+        assertEquals(1, second.loans().size());
+        assertEquals(1, second.search("SPQR").size());
+        assertTrue(!second.isAvailable("B-2"));
+        Loan next = second.borrow("M-2", "B-3");
+        assertTrue(Long.parseLong(next.id().substring(2)) > Long.parseLong(loan.id().substring(2)));
+    }
+
+    @Test
     void authorIndexAndSearch() {
         LibraryFacade lib = App.build(new InMemoryRepositoryFactory(), DAY, out);
+        assertTrue(lib.authorIndex().containsKey("Robert C. Martin"));
         assertEquals(2, lib.search("design patterns").size());
         assertEquals(DAY, lib.today());
         Loan l = lib.reserveBook("M-1", "B-4");

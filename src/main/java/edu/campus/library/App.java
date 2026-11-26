@@ -12,6 +12,7 @@ import edu.campus.library.infra.notification.EmailChannel;
 import edu.campus.library.infra.notification.SmsChannel;
 import edu.campus.library.infra.notification.vendor.QuickMailClient;
 import edu.campus.library.infra.persistence.DemoData;
+import edu.campus.library.infra.persistence.FileRepositoryFactory;
 import edu.campus.library.infra.persistence.InMemoryRepositoryFactory;
 import edu.campus.library.infra.persistence.RepositoryFactory;
 import edu.campus.library.service.AccessControlledRoomBooking;
@@ -29,11 +30,18 @@ import edu.campus.library.service.RoomBooking;
 import edu.campus.library.service.RoomBookingService;
 import edu.campus.library.service.SimulatedDate;
 import edu.campus.library.service.command.CommandHistory;
+import edu.campus.library.service.eligibility.ActiveMemberCheck;
+import edu.campus.library.service.eligibility.BookAvailableCheck;
+import edu.campus.library.service.eligibility.EligibilityCheck;
+import edu.campus.library.service.eligibility.LoanLimitCheck;
+import edu.campus.library.service.eligibility.UnpaidFinesCheck;
 import edu.campus.library.service.importing.CsvBookImporter;
 import edu.campus.library.service.importing.TsvBookImporter;
 import edu.campus.library.ui.ConsoleMenu;
 
 import java.io.PrintStream;
+import java.math.BigDecimal;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -43,15 +51,19 @@ import java.util.stream.Stream;
  * Composition root (L14). The only place that knows concrete classes and
  * wires them together. No Singletons, no service locator.
  *
- * Run: mvn -q compile exec:java
+ * Run: mvn -q compile exec:java                      (in-memory store)
+ *      mvn -q compile exec:java -Dexec.args=--store=file
  */
 public final class App {
     private App() {
     }
 
     public static void main(String[] args) {
-        RepositoryFactory factory = new InMemoryRepositoryFactory();
-        System.out.println("Store: in memory");
+        boolean fileStore = List.of(args).contains("--store=file");
+        RepositoryFactory factory = fileStore
+                ? new FileRepositoryFactory(Path.of("data"))
+                : new InMemoryRepositoryFactory();
+        System.out.println("Store: " + (fileStore ? "file (./data)" : "in memory"));
         LibraryFacade library = build(factory, LocalDate.now(), System.out);
         new ConsoleMenu(library, System.in, System.out).run();
     }
@@ -83,10 +95,16 @@ public final class App {
                 MemberType.STUDENT, DailyCappedFine.student(),
                 MemberType.STAFF, DailyCappedFine.staff()));
 
+        // Chain of Responsibility: order of eligibility checks
+        EligibilityCheck eligibility = new ActiveMemberCheck();
+        eligibility.then(new UnpaidFinesCheck(new BigDecimal("5.00")))
+                   .then(new LoanLimitCheck())
+                   .then(new BookAvailableCheck());
+
         MemberService memberService = new MemberService(members, ids);
         CatalogService catalogService = new CatalogService(catalog, ids);
         LoanService loanService = new LoanService(loans, memberService, catalogService,
-                fines, events, date, ids);
+                eligibility, fines, events, date, ids);
 
         // Proxy wraps the real room service
         RoomBooking roomBooking = new AccessControlledRoomBooking(

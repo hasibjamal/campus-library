@@ -49,6 +49,11 @@ public final class Book implements CatalogComponent, Identifiable {
     }
 
     @Override
+    public <R> R accept(CatalogVisitor<R> visitor) {
+        return visitor.visitBook(this);
+    }
+
+    @Override
     public String toString() {
         return id + " \"" + title + "\" by " + author + " (" + year + ")";
     }

@@ -12,4 +12,7 @@ public interface CatalogComponent extends Serializable {
 
     /** All books at or below this node. */
     Stream<Book> books();
+
+    /** Visitor pattern (L13): double dispatch for reports over the tree. */
+    <R> R accept(CatalogVisitor<R> visitor);
 }

@@ -6,6 +6,8 @@ import edu.campus.library.domain.event.LoanEvent;
 import edu.campus.library.domain.event.LoanEventType;
 import edu.campus.library.domain.loan.Loan;
 import edu.campus.library.domain.member.Member;
+import edu.campus.library.service.eligibility.EligibilityCheck;
+import edu.campus.library.service.eligibility.LoanRequest;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -14,22 +16,22 @@ import java.util.NoSuchElementException;
 
 /** Main use case: reserve, borrow and return books; detect overdue loans. */
 public class LoanService {
-    private static final BigDecimal FINE_LIMIT = new BigDecimal("5.00");
-
     private final Repository<Loan> loans;
     private final MemberService members;
     private final CatalogService catalog;
+    private final EligibilityCheck eligibility;
     private final FinePolicy finePolicy;
     private final LoanEvents events;
     private final SimulatedDate date;
     private final IdGenerator ids;
 
     public LoanService(Repository<Loan> loans, MemberService members, CatalogService catalog,
-                       FinePolicy finePolicy, LoanEvents events,
+                       EligibilityCheck eligibility, FinePolicy finePolicy, LoanEvents events,
                        SimulatedDate date, IdGenerator ids) {
         this.loans = loans;
         this.members = members;
         this.catalog = catalog;
+        this.eligibility = eligibility;
         this.finePolicy = finePolicy;
         this.events = events;
         this.date = date;
@@ -120,19 +122,7 @@ public class LoanService {
     private Loan openLoan(String memberId, String bookId) {
         Member member = members.get(memberId);
         Book book = catalog.getBook(bookId);
-        if (!member.isActive()) {
-            throw new IllegalStateException("Membership of " + member.id() + " is not active");
-        }
-        if (member.fineBalance().compareTo(FINE_LIMIT) > 0) {
-            throw new IllegalStateException("Unpaid fines " + member.fineBalance()
-                    + " exceed the limit of " + FINE_LIMIT);
-        }
-        if (activeLoansOf(memberId).size() >= member.type().maxLoans()) {
-            throw new IllegalStateException("Loan limit of " + member.type().maxLoans() + " reached");
-        }
-        if (!isAvailable(bookId)) {
-            throw new IllegalStateException("Book " + book.id() + " is already on loan or reserved");
-        }
+        eligibility.check(new LoanRequest(member, book, activeLoansOf(memberId).size(), isAvailable(bookId)));
         Loan loan = new Loan(ids.next("L"), bookId, memberId, date.today());
         return loans.save(loan);
     }

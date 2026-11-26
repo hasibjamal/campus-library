@@ -49,4 +49,9 @@ public final class Section implements CatalogComponent {
     public Stream<Book> books() {
         return children.stream().flatMap(CatalogComponent::books);
     }
+
+    @Override
+    public <R> R accept(CatalogVisitor<R> visitor) {
+        return visitor.visitSection(this);
+    }
 }

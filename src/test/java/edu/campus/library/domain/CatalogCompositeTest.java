@@ -1,16 +1,22 @@
 package edu.campus.library.domain;
 
+import edu.campus.library.domain.catalog.AuthorIndexReport;
 import edu.campus.library.domain.catalog.Book;
+import edu.campus.library.domain.catalog.CatalogueTreeReport;
 import edu.campus.library.domain.catalog.Section;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** Composite: the catalogue tree. */
+/** Composite (catalogue tree) combined with Visitor (reports). */
 class CatalogCompositeTest {
     private Section root;
     private Section computing;
@@ -49,5 +55,21 @@ class CatalogCompositeTest {
     @Test
     void childrenListIsReadOnly() {
         assertThrows(UnsupportedOperationException.class, () -> root.children().clear());
+    }
+
+    @Test
+    void treeReportVisitsEveryNodeWithIndentation() {
+        String report = root.accept(new CatalogueTreeReport());
+        assertTrue(report.startsWith("[Catalogue] (4 books)"));
+        assertTrue(report.contains("    [Computing] (2 books)"));
+        assertTrue(report.contains("      - B-1 \"Design Patterns\""));
+        assertTrue(report.contains("  - B-4 \"Analysis Patterns\""));
+    }
+
+    @Test
+    void authorIndexGroupsTitlesByAuthor() {
+        Map<String, TreeSet<String>> index = root.accept(new AuthorIndexReport());
+        assertEquals(Set.of("Fowler", "Gamma", "Sagan"), index.keySet());
+        assertEquals(new TreeSet<>(Set.of("Analysis Patterns", "Refactoring")), index.get("Fowler"));
     }
 }

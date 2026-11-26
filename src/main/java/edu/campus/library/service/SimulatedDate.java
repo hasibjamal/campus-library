@@ -6,14 +6,13 @@ import java.time.LocalDate;
  * The current date used by the services. Injected (never static) so tests
  * and the demo can move time forward to make loans overdue.
  */
-public class SimulatedDate implements DateProvider {
+public class SimulatedDate {
     private LocalDate today;
 
     public SimulatedDate(LocalDate start) {
         this.today = start;
     }
 
-    @Override
     public LocalDate today() {
         return today;
     }

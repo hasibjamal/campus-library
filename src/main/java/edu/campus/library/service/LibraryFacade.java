@@ -1,6 +1,8 @@
 package edu.campus.library.service;
 
+import edu.campus.library.domain.catalog.AuthorIndexReport;
 import edu.campus.library.domain.catalog.Book;
+import edu.campus.library.domain.catalog.CatalogueTreeReport;
 import edu.campus.library.domain.loan.Loan;
 import edu.campus.library.domain.member.Member;
 import edu.campus.library.domain.room.Room;
@@ -19,6 +21,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TreeSet;
 
 /**
  * Facade (L10): one simple API for the UI over the catalogue, loan, member
@@ -52,7 +55,11 @@ public class LibraryFacade {
 
     // ----- catalogue -----
     public String catalogueTree() {
-        return catalog.treeText();
+        return catalog.report(new CatalogueTreeReport());
+    }
+
+    public Map<String, TreeSet<String>> authorIndex() {
+        return catalog.report(new AuthorIndexReport());
     }
 
     public List<Book> search(String text) {

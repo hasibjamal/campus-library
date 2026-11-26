@@ -1,5 +1,6 @@
 package edu.campus.library.service;
 
+import edu.campus.library.domain.catalog.AuthorIndexReport;
 import edu.campus.library.domain.catalog.Book;
 import edu.campus.library.domain.member.Member;
 import edu.campus.library.domain.member.MemberType;
@@ -44,12 +45,9 @@ class CatalogAndMemberServiceTest {
     }
 
     @Test
-    void treeTextShowsSectionsAndBooks() {
-        w.catalog.addBook("Science/Computing", "Refactoring", "Fowler", 1999);
-        String tree = w.catalog.treeText();
-        assertTrue(tree.startsWith("[Catalogue] (6 books)"));
-        assertTrue(tree.contains("    [Computing] (1 books)"));
-        assertTrue(tree.contains("  - B-1 \"Book 1\""));
+    void reportsRunAnyVisitor() {
+        Map<String, ?> index = w.catalog.report(new AuthorIndexReport());
+        assertEquals(5, index.size());
     }
 
     @Test

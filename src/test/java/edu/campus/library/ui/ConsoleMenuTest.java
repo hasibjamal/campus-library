@@ -27,7 +27,7 @@ class ConsoleMenuTest {
     @Test
     void fullSession() {
         String out = run(String.join("\n",
-                "1", "2", "patterns", "2", "zzz", "5",
+                "1", "2", "patterns", "2", "zzz", "3", "5",
                 "6", "M-1", "B-1",
                 "6", "M-2", "B-1",
                 "7", "M-2", "B-2",

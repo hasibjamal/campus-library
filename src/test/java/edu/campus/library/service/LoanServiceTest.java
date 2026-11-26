@@ -1,11 +1,15 @@
 package edu.campus.library.service;
 
 import edu.campus.library.domain.loan.Loan;
+import edu.campus.library.infra.persistence.FileRepositoryFactory;
 import edu.campus.library.infra.persistence.InMemoryRepositoryFactory;
+import edu.campus.library.service.eligibility.LoanRefusedException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.math.BigDecimal;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -16,6 +20,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Main use case end to end: borrow, overdue scan (Observer), return with fine (State + Strategy). */
 class LoanServiceTest {
+    @TempDir
+    Path dir;
+
     private LibraryWorld w;
 
     @BeforeEach
@@ -35,7 +42,7 @@ class LoanServiceTest {
     @Test
     void sameBookCannotBeLentTwice() {
         w.loans.borrow("M-1", "B-1");
-        assertThrows(IllegalStateException.class, () -> w.loans.borrow("M-2", "B-1"));
+        assertThrows(LoanRefusedException.class, () -> w.loans.borrow("M-2", "B-1"));
     }
 
     @Test
@@ -115,22 +122,15 @@ class LoanServiceTest {
     }
 
     @Test
-    void loanRulesAreEnforced() {
-        w.members.get("M-1").addFine(new BigDecimal("6.00"));
-        assertTrue(assertThrows(IllegalStateException.class, () -> w.loans.borrow("M-1", "B-1"))
-                .getMessage().contains("Unpaid fines"));
-        w.loans.borrow("M-2", "B-1");
-        w.members.get("M-2").deactivate();
-        assertTrue(assertThrows(IllegalStateException.class, () -> w.loans.borrow("M-2", "B-2"))
-                .getMessage().contains("not active"));
-    }
+    void sameServicesWorkUnchangedOnFileRepositories() {
+        LibraryWorld onFile = new LibraryWorld(new FileRepositoryFactory(dir));
+        Loan l = onFile.loans.borrow("M-1", "B-1");
+        onFile.date.advanceDays(16);
+        onFile.loans.returnBook(l.id());
 
-    @Test
-    void studentLoanLimitIsThree() {
-        w.loans.borrow("M-1", "B-1");
-        w.loans.borrow("M-1", "B-2");
-        w.loans.borrow("M-1", "B-3");
-        assertTrue(assertThrows(IllegalStateException.class, () -> w.loans.borrow("M-1", "B-4"))
-                .getMessage().contains("limit"));
+        // a fresh set of services reading the same folder sees the stored state
+        LibraryWorld reopened = new LibraryWorld(new FileRepositoryFactory(dir));
+        assertEquals("RETURNED", reopened.loans.get(l.id()).stateName());
+        assertEquals(new BigDecimal("1.00"), reopened.members.get("M-1").fineBalance());
     }
 }

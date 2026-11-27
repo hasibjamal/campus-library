@@ -60,6 +60,16 @@ public class LoanService {
         return loan;
     }
 
+    /** Extends a borrowed loan by the reader's loan period (once, and only while not late). */
+    public Loan renew(String loanId) {
+        Loan loan = get(loanId);
+        Member member = members.get(loan.memberId());
+        loan.renew(date.today(), member.type().loanDays());
+        loans.save(loan);
+        publish(LoanEventType.RENEWED, loan);
+        return loan;
+    }
+
     public Loan cancelReservation(String loanId) {
         Loan loan = get(loanId);
         loan.cancel();

@@ -96,6 +96,18 @@ class LoanServiceTest {
     }
 
     @Test
+    void renewalUsesMemberLoanPeriodAndIsLogged() {
+        Loan student = w.loans.borrow("M-1", "B-1");
+        Loan staff = w.loans.borrow("M-2", "B-2");
+        w.date.advanceDays(10);
+        assertEquals(w.date.today().plusDays(18), w.loans.renew(student.id()).dueDate());
+        assertEquals(w.date.today().plusDays(46), w.loans.renew(staff.id()).dueDate());
+        assertTrue(w.activity.lines().get(2).contains("RENEWED loan=" + student.id()));
+        w.date.advanceDays(10); // student due date is now day 28, today is day 20: not late
+        assertTrue(w.loans.scanOverdue().isEmpty(), "renewed loan is not overdue");
+    }
+
+    @Test
     void activityLogRecordsEveryEvent() {
         Loan l = w.loans.borrow("M-1", "B-1");
         w.loans.returnBook(l.id());

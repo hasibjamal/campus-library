@@ -1,4 +1,4 @@
-# User stories (M1)
+# User stories
 
 | # | Story | Acceptance criteria | Covered by |
 |---|-------|---------------------|-----------|
@@ -12,3 +12,4 @@
 | US-8 | As a **librarian** I want fines charged on late return according to reader type so that rules are fair. | Student 0.50/day, cap 20.00; staff 0.25/day after 2 grace days, cap 10.00; fine added to balance; reader notified; can be paid. | `FineStrategyTest`, `LoanServiceTest`, menus 9, 12 |
 | US-9 | As a **reader** I want to book a study room for up to 3 hours so that my group has a place to work. | 08:00–22:00 only; end after start; no overlap in the same room; staff-only rooms refused to students. | `RoomReservationBuilderTest`, `RoomBookingProxyTest`, menu 14 |
 | US-10 | As a **reader** I want to undo my last room booking or cancellation so that mistakes are easy to fix. | Undo restores exactly the previous reservations; repeated undo walks back; "nothing to undo" when empty. | `CommandUndoTest`, menu 17 |
+| US-11 | As a **reader** I want to renew a borrowed book once so that I can keep it longer. | Due date moves forward by the reader's loan period; refused when late, overdue, not yet collected, returned, or already renewed; logged as RENEWED. | `LoanStateTest`, `LoanServiceTest`, menu 21 |

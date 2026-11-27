@@ -21,6 +21,10 @@ public interface LoanState extends Serializable {
         throw illegal("return");
     }
 
+    default void renew(Loan loan, LocalDate today, int loanDays) {
+        throw illegal("renew");
+    }
+
     default void markOverdue(Loan loan, LocalDate today) {
         throw illegal("mark overdue");
     }

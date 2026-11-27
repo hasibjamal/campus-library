@@ -99,6 +99,36 @@ class LoanStateTest {
     }
 
     @Test
+    void borrowedLoanCanBeRenewedOnce() {
+        loan.pickUp(DAY, 14);
+        loan.renew(DAY.plusDays(10), 14);
+        assertEquals("BORROWED", loan.stateName());
+        assertEquals(DAY.plusDays(28), loan.dueDate());
+        assertEquals(1, loan.renewals());
+        IllegalStateException e = assertThrows(IllegalStateException.class, () -> loan.renew(DAY.plusDays(20), 14));
+        assertTrue(e.getMessage().contains("already renewed"));
+    }
+
+    @Test
+    void renewalOnTheDueDateIsAllowedButNotAfter() {
+        loan.pickUp(DAY, 14);
+        assertThrows(IllegalStateException.class, () -> loan.renew(DAY.plusDays(15), 14));
+        loan.renew(DAY.plusDays(14), 14);
+        assertEquals(DAY.plusDays(28), loan.dueDate());
+    }
+
+    @Test
+    void renewalIsRefusedInOtherStates() {
+        assertThrows(IllegalStateException.class, () -> loan.renew(DAY, 14));
+        loan.pickUp(DAY, 14);
+        loan.markOverdue(DAY.plusDays(15));
+        assertTrue(assertThrows(IllegalStateException.class, () -> loan.renew(DAY.plusDays(15), 14))
+                .getMessage().contains("OVERDUE"));
+        loan.returnItem(DAY.plusDays(15), fines);
+        assertThrows(IllegalStateException.class, () -> loan.renew(DAY.plusDays(15), 14));
+    }
+
+    @Test
     void daysLateIsZeroBeforePickUp() {
         assertEquals(0, loan.daysLate(DAY.plusDays(100)));
     }

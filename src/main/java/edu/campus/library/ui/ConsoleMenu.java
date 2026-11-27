@@ -56,7 +56,7 @@ public class ConsoleMenu {
         out.println("Today: " + library.today());
         out.println(" Catalogue:  1 tree   2 search   3 author index   4 add book");
         out.println(" Loans:      5 members  6 borrow  7 reserve book  8 pick up  9 return");
-        out.println("            10 list loans  11 overdue scan  12 pay fine");
+        out.println("            10 list loans  11 overdue scan  12 pay fine  21 renew");
         out.println(" Rooms:     13 rooms  14 reserve room  15 cancel  16 day schedule  17 undo");
         out.println(" Other:     18 advance date  19 activity log  20 import books   0 exit");
     }
@@ -87,6 +87,7 @@ public class ConsoleMenu {
             case "18" -> library.advanceDays(Long.parseLong(ask("Days")));
             case "19" -> library.activity().forEach(out::println);
             case "20" -> importBooks();
+            case "21" -> out.println("Renewed: " + library.renew(ask("Loan id")));
             default -> out.println("Unknown option");
         }
     }

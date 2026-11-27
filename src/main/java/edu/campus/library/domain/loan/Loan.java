@@ -13,6 +13,8 @@ import java.util.Objects;
 public class Loan implements Identifiable, Serializable {
     private static final long serialVersionUID = 1L;
 
+    public static final int MAX_RENEWALS = 1;
+
     private final String id;
     private final String bookId;
     private final String memberId;
@@ -22,6 +24,7 @@ public class Loan implements Identifiable, Serializable {
     private LocalDate returnedOn;
     private BigDecimal fine = BigDecimal.ZERO.setScale(2);
     private LoanState state = new ReservedState();
+    private int renewals;
 
     public Loan(String id, String bookId, String memberId, LocalDate createdOn) {
         this.id = Objects.requireNonNull(id);
@@ -38,6 +41,10 @@ public class Loan implements Identifiable, Serializable {
 
     public void returnItem(LocalDate today, FineStrategy fines) {
         state.returnItem(this, today, fines);
+    }
+
+    public void renew(LocalDate today, int loanDays) {
+        state.renew(this, today, loanDays);
     }
 
     public void markOverdue(LocalDate today) {
@@ -59,6 +66,11 @@ public class Loan implements Identifiable, Serializable {
         this.dueDate = due;
     }
 
+    void extend(LocalDate newDue) {
+        this.dueDate = newDue;
+        this.renewals++;
+    }
+
     void complete(LocalDate returned, BigDecimal charged) {
         this.returnedOn = returned;
         this.fine = charged;
@@ -71,6 +83,10 @@ public class Loan implements Identifiable, Serializable {
             return 0;
         }
         return Math.max(0, ChronoUnit.DAYS.between(dueDate, today));
+    }
+
+    public int renewals() {
+        return renewals;
     }
 
     public boolean holdsBook() {

@@ -109,6 +109,10 @@ public class LibraryFacade {
         return loans.pickUp(loanId);
     }
 
+    public Loan renew(String loanId) {
+        return loans.renew(loanId);
+    }
+
     public Loan returnBook(String loanId) {
         return loans.returnBook(loanId);
     }

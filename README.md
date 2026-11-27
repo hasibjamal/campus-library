@@ -6,7 +6,7 @@ A pattern-driven information system for a university library (Capstone, *Applica
 
 The library has a **catalogue** organised as a tree of sections (Science → Computing → books).
 **Members** are students or staff. A member can **reserve** a book and pick it up later, or **borrow** it at the desk.
-Each loan moves through a lifecycle: *Reserved → Borrowed → (Overdue) → Returned*, or *Reserved → Cancelled*.
+Each loan moves through a lifecycle: *Reserved → Borrowed → (Overdue) → Returned*, or *Reserved → Cancelled*. A borrowed loan can be **renewed** once while it is not late.
 Before a loan is opened the system checks that the member is active, has no large unpaid fines, is under the loan limit, and that the book is free.
 A daily **overdue scan** flags late loans and sends **overdue notices** by e-mail and SMS.
 On return, a **fine** is charged according to the reader type (students: 0.50/day, cap 20; staff: 0.25/day after 2 grace days, cap 10).

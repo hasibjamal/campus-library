@@ -15,4 +15,5 @@ B. Default methods in `LoanState` throw `IllegalStateException`, so each state c
 ## Consequences
 - Five small classes instead of one `switch` per action.
 - A new state (e.g. *Lost*) is a new class plus one transition in an existing state.
+- Proof after v1.0: **renewal** (US-11) was one new default method in `LoanState` and one override in `BorrowedState`; no other state class changed.
 - States are stateless and `Serializable`, so the file repository stores them.

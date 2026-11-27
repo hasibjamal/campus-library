@@ -22,6 +22,19 @@ public class BorrowedState implements LoanState {
     }
 
     @Override
+    public void renew(Loan loan, LocalDate today, int loanDays) {
+        if (loan.daysLate(today) > 0) {
+            throw new IllegalStateException("Loan " + loan.id() + " is already late and cannot be renewed");
+        }
+        if (loan.renewals() >= Loan.MAX_RENEWALS) {
+            throw new IllegalStateException("Loan " + loan.id() + " was already renewed "
+                    + Loan.MAX_RENEWALS + " time(s)");
+        }
+        loan.extend(loan.dueDate().plusDays(loanDays));
+        // stays BORROWED: no state change
+    }
+
+    @Override
     public void markOverdue(Loan loan, LocalDate today) {
         if (loan.daysLate(today) <= 0) {
             throw new IllegalStateException("Loan " + loan.id() + " is not past its due date");

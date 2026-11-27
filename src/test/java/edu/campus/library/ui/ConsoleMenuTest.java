@@ -32,6 +32,8 @@ class ConsoleMenuTest {
                 "6", "M-2", "B-1",
                 "7", "M-2", "B-2",
                 "8", "L-1001",
+                "21", "L-1001",
+                "21", "L-1001",
                 "18", "30", "11",
                 "9", "L-1000",
                 "10", "12", "M-1", "1",
@@ -48,6 +50,8 @@ class ConsoleMenuTest {
         assertTrue(out.contains("Borrowed: L-1000"));
         assertTrue(out.contains("! Book B-1 is already on loan or reserved"));
         assertTrue(out.contains("Picked up: L-1001"));
+        assertTrue(out.contains("Renewed: L-1001"));
+        assertTrue(out.contains("! Loan L-1001 was already renewed 1 time(s)"));
         assertTrue(out.contains("Flagged overdue: 2"));
         assertTrue(out.contains("Returned: L-1000"));
         assertTrue(out.contains("Paid 1.00"));
